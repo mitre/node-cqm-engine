@@ -1,0 +1,16 @@
+{
+  "name": "fhir-qme-test",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies" : {
+    "node-qme": "git+https://gitlab.mitre.org/pophealth/cqm-package-builder.git",
+    "fhir-patient-api" : "git+https://gitlab.mitre.org/pophealth/fhir-patient-api.git",
+     "fibers": ">=1.0.4"
+  },
+  "author": "",
+  "license": "ISC"
+}
