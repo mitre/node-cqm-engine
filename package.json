@@ -1,5 +1,5 @@
 {
-  "name": "fhir-qme-test",
+  "name": "node-worker",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -8,7 +8,7 @@
   },
   "dependencies" : {
     "node-qme": "git+https://gitlab.mitre.org/pophealth/cqm-package-builder.git",
-    "fhir-patient-api" : "git+https://gitlab.mitre.org/pophealth/fhir-patient-api.git",
+    "fhir-patient-api" : "git+https://github.com/mitre/fhir-patient-api.git",
      "fibers": ">=1.0.4"
   },
   "author": "",
