@@ -46,6 +46,22 @@ var connectionDetails = {
 //////////////////////////////
 
 var jobs = {
+  "rollup": {
+    plugins: ['jobLock', 'queueLock'],
+    pluginOptions: {
+      jobLock: {},
+    },
+    perform: function(qr_id, callback) {
+      QueryReport.find(qr_id).then((qr) => {
+        if (!qr.patientsCalculated()){
+          this.queueObject.enqueue("rollup","rollup",qr_id)
+        }else{
+          cqmEngine.count_records_in_measure_groups(qr);
+        }
+      });
+      callback(null);
+    }
+  },
   "calculate": {
     plugins: ['jobLock', 'queueLock'],
     pluginOptions: {
@@ -55,41 +71,42 @@ var jobs = {
       // is the a qr with the same measure_id, sub_id, effective_date already
       // finished ?  If so send to rollup queue.
       // if not send to the patient calculation queue and rollup queue
-      let qr = QueryReport.find(qr_id);
-      if (qr.state == "calculating") {
-        callback(null)
-        return;
-      }
-      if (qr.patientsCalculated() && qr.state != "calculated") {
-        // rollup the totals
-        this.queueObject.enqueue("rollup", "rollup", qr_id);
-        callback(null);
-      } else if (qr.calculationQueuedOrRunning()) {
-        // there is already a job running that will create the patient records
-        // will wait unitl it is done
-        qr.state = "queued";
-        qr.save();
-        callback(null);
-      } else {
-        // calculate the patient records then enque all of the queued
-        // reports for aggregation -- in a separate que so this will only be to
-        // calculate the patient records
-        qr.state = "calculating";
-        qr.save();
-        QueryReport.find({
-          measure_id: qr.measure_id,
-          sub_id: qr.sub_id,
-          effective_date: qr.effective_date,
-          state: {
-            "$ne": "calculated"
-          }
-        }).then((results) => {
-          results.forEach((rep) => {
-              this.queueObject.enqueue("rollup", "rollup", rep.id);
+      QueryReport.find(qr_id).then((qr) => {
+        if (qr.state == "calculating") {
+          callback(null)
+          return;
+        }
+        if (qr.patientsCalculated() && qr.status.state != "calculated") {
+          // rollup the totals
+          cqmEngine.count_records_in_measure_groups(qr);
+          callback(null);
+        } else if (qr.calculationQueuedOrRunning()) {
+          // there is already a job running that will create the patient records
+          // will wait unitl it is done
+          qr.status.state = "queued";
+          qr.save();
+          callback(null);
+        } else {
+          // calculate the patient records then enque all of the queued
+          // reports for aggregation -- in a separate que so this will only be to
+          // calculate the patient records
+          qr.status.state = "calculating";
+          qr.save();
+          QueryReport.find({
+            measure_id: qr.measure_id,
+            sub_id: qr.sub_id,
+            effective_date: qr.effective_date,
+            state: {
+              "$ne": "calculated"
             }
-          )});
-        callback(null, true);
-      }
+          }).then((results) => {
+            results.forEach((rep) => {
+              this.queueObject.enqueue("rollup", "rollup", rep.id);
+            })
+          });
+          callback(null, true);
+        }
+      });
 
     },
   }
