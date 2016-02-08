@@ -47,7 +47,8 @@ describe('Patient', function() {
     bundle = new Bundle(bundle_path);
     var loader = new Loader(bundle);
     cqms = loader.load();
-    handler = new Handler();    MongoClient.connect('mongodb://127.0.0.1:27017/fhir-test', function(err, db) {
+    handler = new Handler();
+    MongoClient.connect('mongodb://127.0.0.1:27017/fhir-test', function(err, db) {
       database = db;
       db.collection("patient-cache").drop();
       db.collection("query-results").drop();
@@ -65,8 +66,8 @@ describe('Patient', function() {
     new Fiber(() => {
       var psource = new PatientSource(database,"patients")
       var executor = new Executor(cqms);
-      var options = {effective_date: 1420070399 , enable_logging: false, enable_rationale: false, short_circuit: false};
-      executor.execute(psource,['CMS9v4a'], handler, options);
+      var options = {effective_date: 1451606400 , enable_logging: false, enable_rationale: false, short_circuit: false};
+      executor.execute(psource,['CMS113v4'], handler, options);
       done();
     }).run();
   });
@@ -75,9 +76,9 @@ describe('Patient', function() {
     new Fiber(() => {
       var psource = new PatientSource(database)
       var executor = new Executor(cqms);
-      var options = {effective_date: 1420070399 , enable_logging: false, enable_rationale: false, short_circuit: true};
+      var options = {effective_date: 1451606400 , enable_logging: false, enable_rationale: false, short_circuit: true};
       var cqmHandler = new CQMCalculationHandler(bundle.measures,options,database);
-      executor.execute(psource,['CMS9v4a'], cqmHandler, options);
+      executor.execute(psource,bundle.measure_ids(), cqmHandler, options);
       done();
     }).run();
   });
