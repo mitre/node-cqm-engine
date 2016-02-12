@@ -76,7 +76,7 @@ describe('Patient', function() {
     new Fiber(() => {
       var psource = new PatientSource(database)
       var executor = new Executor(cqms);
-      var options = {effective_date: 1451606400 , enable_logging: false, enable_rationale: false, short_circuit: true};
+      var options = {effective_date: 1451606400 , enable_logging: false, enable_rationale: false, short_circuit: false};
       var cqmHandler = new CQMCalculationHandler(bundle.measures,options,database);
       executor.execute(psource,bundle.measure_ids(), cqmHandler, options);
       done();
