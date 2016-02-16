@@ -73,7 +73,6 @@ var jobs = {
       jobLock: {},
     },
     perform: function (qr_id, callback) {
-      console.log("hey");
       // is the a qr with the same measure_id, sub_id, effective_date already
       // finished ?  If so send to rollup queue.
       // if not send to the patient calculation queue and rollup queue
@@ -98,7 +97,7 @@ var jobs = {
           }
         }]).toArray((err, results) => {
           //console.log(results);
-          console.log("aggregate");
+
           if (err) {
             callback(err, null);
             return;
@@ -114,12 +113,10 @@ var jobs = {
 
           }
           if (queuedRunningOrDone != 0) {
-            console.log("queuedRunningOrDone");
             qr.status.state = "queued";
             qr.save();
             this.queueObject.enqueue("rollup", "rollup", qr.id);
           } else {
-            console.log("calculate");
             // if calculating || completed || queued > 0
             qr.status.state = "calculating";
             qr.save();
@@ -149,7 +146,6 @@ var jobs = {
 
         })
       }).catch((err) => {
-        console.log("errors");
         callback(err, null)
       });
     }
@@ -243,18 +239,4 @@ scheduler.on('working_timestamp', function (timestamp) {
 });
 scheduler.on('transferred_job', function (timestamp, job) {
   console.log("scheduler enquing job " + timestamp + " >> " + JSON.stringify(job));
-});
-
-////////////////////////
-// CONNECT TO A QUEUE //
-////////////////////////
-
-var queue = new NR.queue({
-  connection: connectionDetails
-}, jobs);
-queue.on('error', function (error) {
-  console.log(error);
-});
-queue.connect(function () {
-  queue.enqueue('calculate', "calculate", "56bba3a22aa90b6cd06261a2");
 });
