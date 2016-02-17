@@ -65,20 +65,6 @@ mongoose.connect(mongo_url);
 
 var NR = require("node-resque");
 
-///////////////////////////
-// SET UP THE CONNECTION //
-///////////////////////////
-
-var connectionDetails = {
-  pkg: 'ioredis',
-  host: argv.redis_host,
-  password: null,
-  port: 6379,
-  database: 0,
-  // namespace: 'resque',
-  // looping: true,
-  // options: {password: 'abc'},
-};
 
 //////////////////////////////
 // DEFINE YOUR WORKER TASKS //
@@ -191,10 +177,15 @@ var jobs = {
 ////////////////////
 
 var connectionDetails = {
-  pkg: "ioredis",
-  host: "127.0.0.1",
-  password: ""
-}
+  pkg: 'ioredis',
+  host: argv.redis_host,
+  password: null,
+  port: 6379,
+  database: 0,
+  // namespace: 'resque',
+  // looping: true,
+  // options: {password: 'abc'},
+};
 
 var worker = new NR.multiWorker({
   connection: connectionDetails,
