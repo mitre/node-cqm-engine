@@ -1,5 +1,39 @@
 "use strict";
-var argv = require('minimist')(process.argv.slice(2));
+var params = require('optimist')
+  .options({
+    "h": {
+      describe: "help",
+      alias: "h"
+    },
+    "q": {
+      alias: "queues",
+      describe: "which redis queues to monitor , format is q1:q2:q3 ",
+      default: 'calculate:rollup'
+    },
+    "b": {
+      alias: "bundle",
+      describe: "path to the bundle to use for measure calculation [file path] ",
+      demand: true
+    },
+    "m": {
+      alias: "mongo_host",
+      describe: "the host of the mongodb server that contains the fhir patient data and where patient values will be stored ",
+      default: "127.0.0.1"
+    },
+    "d": {
+      alias: "database",
+      describe: "the mongodb database",
+      default: "fhir"
+    },
+    "r": {
+      alias: "redis",
+      describe: "the redis server used to store the background processing jobs",
+      default: "127.0.0.1"
+    }
+  })
+
+var argv = params.argv
+
 let CEE = require("./lib/cqm-execution-engine")
 let mongoose = require("mongoose")
 let Fiber = require('fibers');
@@ -11,14 +45,18 @@ let QualityReport = require("./lib/quality_report")
   // need to make sure mongoose is setup
 let database = null;
 let cqmEngine = null;
-let bundle_path = "./test/fixtures/bundle-2.7.0.zip";
-
-MongoClient.connect('mongodb://127.0.0.1:27017/fhir-test', function (err, db) {
+let bundle_path = argv.bundle_path;
+let mongo_host = argv.mongo_host;
+let mongo_database = argv.database;
+let redis_host = argv.redis_host;
+let mongo_url = "mongodb://"+mongo_host+"/"+mongo_database;
+let queues = (argv.queues) ? argv.queues.split(":") : ['calculate', 'rollup'];
+MongoClient.connect(mongo_url, function (err, db) {
   database = db;
   cqmEngine = new CEE(database, bundle_path);
 });
 
-mongoose.connect('mongodb://127.0.0.1:27017/fhir-test');
+mongoose.connect(mongo_url);
 
 
 /////////////////////////
@@ -33,7 +71,7 @@ var NR = require("node-resque");
 
 var connectionDetails = {
   pkg: 'ioredis',
-  host: '127.0.0.1',
+  host: argv.redis_host,
   password: null,
   port: 6379,
   database: 0,
@@ -55,7 +93,6 @@ var jobs = {
     perform: function (qr_id, callback) {
       QualityReport.findOne({"_id" : qr_id}).then((qr) => {
         cqmEngine.aggregate(qr).then((res) =>{
-          console.log(res);
           qr.status.state = "completed";
           qr.result = res
           qr.save()
@@ -77,7 +114,6 @@ var jobs = {
       // finished ?  If so send to rollup queue.
       // if not send to the patient calculation queue and rollup queue
       QualityReport.findOne({"_id" : qr_id}).then((qr) => {
-      //  console.log(qr);
         if (qr.status.state != "" && qr.status.state != "unknown") {
           callback(null)
           return;
@@ -96,8 +132,6 @@ var jobs = {
             }
           }
         }]).toArray((err, results) => {
-          //console.log(results);
-
           if (err) {
             callback(err, null);
             return;
@@ -164,9 +198,9 @@ var connectionDetails = {
 
 var worker = new NR.multiWorker({
   connection: connectionDetails,
-  queues: ['calculate', 'rollup'],
+  queues: queues,
   minTaskProcessors: 1,
-  maxTaskProcessors: 100,
+  maxTaskProcessors: 10,
   checkTimeout: 1000,
   maxEventLoopDelay: 10,
   toDisconnectProcessors: true,
@@ -189,16 +223,16 @@ scheduler.connect(function () {
 /////////////////////////
 
 worker.on('start', function () {
-  console.log("worker started");
+  console.log("worker started "+ JSON.stringify(this.options));
 });
 worker.on('end', function () {
-  console.log("worker ended");
+  console.log("worker ended " + " "+this.name + " " +this.queues);
 });
 worker.on('cleaning_worker', function (worker, pid) {
   console.log("cleaning old worker " + worker);
 });
 worker.on('poll', function (queue) {
-  console.log("worker polling " + queue);
+  console.log("worker polling " + queue + " " + " "+this.name + " " +this.queues);
 });
 worker.on('job', function (queue, job) {
   console.log("working job " + queue + " " + JSON.stringify(job));
