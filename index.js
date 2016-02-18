@@ -49,7 +49,7 @@ let rollup_processors = argv.ap
 let mongo_host = argv.mongo_host
 let mongo_database = argv.database
 let redis_host = argv.redis
-let bundle_path = argv.bundle_path
+let bundle_path = argv.bundle
 
 // make sure the bundle path is available
 // make sure that the
@@ -57,10 +57,10 @@ let child_process = require("child_process")
 console.log(argv);
 // start the rollup processors
 for(var i=0; i<rollup_processors; i++){
-  child_process.fork("./calculation_job.js", ["--queues","rollup","--mongo_host",mongo_host,"--mongo_collection",mongo_database, "--redis_host",redis_host, "--bundle",bundle_path])
+  child_process.fork("./calculation_job.js", ["--queues","rollup","--mongo_host",mongo_host,"--database",mongo_database, "--redis_host",redis_host, "--bundle",bundle_path])
 }
 
 // start the rollup processors
 for(var i=0; i<calculation_processors; i++){
-  child_process.fork("./calculation_job.js", ["--queues","calculate","--mongo_host",mongo_host,"--mongo_collection",mongo_database, "--redis_host",redis_host, "--bundle",bundle_path])
+  child_process.fork("./calculation_job.js", ["--queues","calculate","--mongo_host",mongo_host,"--database",mongo_database, "--redis_host",redis_host, "--bundle",bundle_path])
 }

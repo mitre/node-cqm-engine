@@ -45,12 +45,12 @@ let QualityReport = require("./lib/quality_report")
   // need to make sure mongoose is setup
 let database = null;
 let cqmEngine = null;
-let bundle_path = argv.bundle_path;
+let bundle_path = argv.bundle;
 let mongo_host = argv.mongo_host;
 let mongo_database = argv.database;
 let redis_host = argv.redis_host;
 let mongo_url = "mongodb://"+mongo_host+"/"+mongo_database;
-let queues = (argv.queues) ? argv.queues.split(":") : ['calculate', 'rollup'];
+let queues =  argv.queues.split(":")
 MongoClient.connect(mongo_url, function (err, db) {
   database = db;
   cqmEngine = new CEE(database, bundle_path);
@@ -83,7 +83,12 @@ var jobs = {
           qr.result = res
           qr.save()
           callback(null, res);
-        }).catch((err) =>{callback(err, null)});
+        }).catch((err) =>{
+          qr.status.state = "failed";
+          qr.status.log.push(err.toString());
+          qr.save();
+          callback(err, null);
+        });
 
       }).catch((err) => {
         callback(err, null)
@@ -100,10 +105,18 @@ var jobs = {
       // finished ?  If so send to rollup queue.
       // if not send to the patient calculation queue and rollup queue
       QualityReport.findOne({"_id" : qr_id}).then((qr) => {
+        if(!qr){
+          console.log("report not found for quality report with id " + qr_id);
+          callback("Quality Report not found" );
+          return;
+        }
         if (qr.status.state != "" && qr.status.state != "unknown") {
           callback(null)
           return;
         }
+        // first get all of the query reports that have the same measure_id sub_id and effective_date
+        // and count how many are currently completed running or queued
+        // there should only be queued items if there has already been a qr that has completed
         database.collection("quality-reports").aggregate([
           {"$match" : {
             "effective_date" : qr.effective_date,
@@ -132,15 +145,16 @@ var jobs = {
             });
 
           }
+          // if there are items that are queued runnign or done add this to the rollup queue
           if (queuedRunningOrDone != 0) {
             qr.status.state = "queued";
             qr.save();
             this.queueObject.enqueue("rollup", "rollup", qr.id);
           } else {
-            // if calculating || completed || queued > 0
+            // time to calculate the pateint results
             qr.status.state = "calculating";
             qr.save();
-
+            console.log("calculating measure records");
             // calculate patient level records
             // this should be blocking
             cqmEngine.calculate(qr);
@@ -160,6 +174,9 @@ var jobs = {
               });
               callback(null, true);
             }).catch((err) => {
+              qr.status.state = "failed";
+              qr.status.log.push(err.toString());
+              qr.save();
               callback(err, null);
             });
           }
@@ -187,7 +204,7 @@ var connectionDetails = {
   // options: {password: 'abc'},
 };
 
-var worker = new NR.multiWorker({
+var worker = new NR.worker({
   connection: connectionDetails,
   queues: queues,
   minTaskProcessors: 1,
@@ -197,7 +214,10 @@ var worker = new NR.multiWorker({
   toDisconnectProcessors: true,
 }, jobs);
 
-worker.start()
+worker.connect(function(){
+  worker.workerCleanup(); // optional: cleanup any previous improperly shutdown workers on this host
+  worker.start();
+});
   ///////////////////////
   // START A SCHEDULER //
   ///////////////////////
@@ -214,16 +234,16 @@ scheduler.connect(function () {
 /////////////////////////
 
 worker.on('start', function () {
-  console.log("worker started "+ JSON.stringify(this.options));
+  console.log("worker started "+this.name);
 });
 worker.on('end', function () {
-  console.log("worker ended " + " "+this.name + " " +this.queues);
+  console.log("worker ended " +this.name );
 });
 worker.on('cleaning_worker', function (worker, pid) {
   console.log("cleaning old worker " + worker);
 });
 worker.on('poll', function (queue) {
-  console.log("worker polling " + queue + " " + " "+this.name + " " +this.queues);
+  console.log("worker polling " + queue + " " + " "+this.name );
 });
 worker.on('job', function (queue, job) {
   console.log("working job " + queue + " " + JSON.stringify(job));
