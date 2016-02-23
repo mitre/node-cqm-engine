@@ -58,7 +58,7 @@ queue.connect()
 let poll = function () {
   console.log("polling for new quality reports");
   QualityReport.find({
-    "status.state": ""
+    "status.state": "requested"
   }).then((qrs) => {
     qrs.forEach((qr) => {
       console.log("push qr to queue "+qr.id);
