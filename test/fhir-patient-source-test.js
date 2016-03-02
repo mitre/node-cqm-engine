@@ -50,8 +50,8 @@ describe('Patient', function() {
     handler = new Handler();
     MongoClient.connect('mongodb://127.0.0.1:27017/fhir-test', function(err, db) {
       database = db;
-      db.collection("patient-cache").drop();
-      db.collection("query-results").drop();
+      db.collection("patient_cache").drop();
+      db.collection("query_cache").drop();
       done(err);
     });
 
@@ -76,9 +76,11 @@ describe('Patient', function() {
     new Fiber(() => {
       var psource = new PatientSource(database)
       var executor = new Executor(cqms);
-      var options = {effective_date: 1451606400 , enable_logging: false, enable_rationale: false, short_circuit: false};
+      var options = {effective_date: 1451606400 , enable_logging: true, enable_rationale: false, short_circuit: false};
       var cqmHandler = new CQMCalculationHandler(bundle.measures,options,database);
-      executor.execute(psource,bundle.measure_ids(), cqmHandler, options);
+      bundle.measure_ids().forEach((mid) => {
+        executor.execute(psource,[mid], cqmHandler, options);
+      })
       done();
     }).run();
   });

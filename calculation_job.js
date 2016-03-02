@@ -49,8 +49,8 @@ let bundle_path = argv.bundle;
 let mongo_host = argv.mongo_host;
 let mongo_database = argv.database;
 let redis_host = argv.redis_host;
-let mongo_url = "mongodb://"+mongo_host+"/"+mongo_database;
-let queues =  argv.queues.split(":")
+let mongo_url = "mongodb://" + mongo_host + "/" + mongo_database;
+let queues = argv.queues.split(":")
 MongoClient.connect(mongo_url, function (err, db) {
   database = db;
   cqmEngine = new CEE(database, bundle_path);
@@ -58,17 +58,19 @@ MongoClient.connect(mongo_url, function (err, db) {
 
 mongoose.connect(mongo_url);
 
-
+let jobcount = 0;
 /////////////////////////
 // REQUIRE THE PACKAGE //
 /////////////////////////
 
 var NR = require("node-resque");
 
-
-//////////////////////////////
-// DEFINE YOUR WORKER TASKS //
-//////////////////////////////
+global.print = function (data) {
+    //  console.log(data);
+  }
+  //////////////////////////////
+  // DEFINE YOUR WORKER TASKS //
+  //////////////////////////////
 
 var jobs = {
   "rollup": {
@@ -77,13 +79,15 @@ var jobs = {
       jobLock: {},
     },
     perform: function (qr_id, callback) {
-      QualityReport.findOne({"_id" : qr_id}).then((qr) => {
-        cqmEngine.aggregate(qr).then((res) =>{
+      QualityReport.findOne({
+        "_id": qr_id
+      }).then((qr) => {
+        cqmEngine.aggregate(qr).then((res) => {
           qr.status.state = "completed";
           qr.result = res
           qr.save()
           callback(null, res);
-        }).catch((err) =>{
+        }).catch((err) => {
           qr.status.state = "failed";
           qr.status.log.push(err.toString());
           qr.save();
@@ -104,26 +108,32 @@ var jobs = {
       // is the a qr with the same measure_id, sub_id, effective_date already
       // finished ?  If so send to rollup queue.
       // if not send to the patient calculation queue and rollup queue
-      QualityReport.findOne({"_id" : qr_id}).then((qr) => {
-        if(!qr){
+
+      QualityReport.findOne({
+        "_id": qr_id
+      }).then((qr) => {
+        if (!qr) {
           console.log("report not found for quality report with id " + qr_id);
-          callback("Quality Report not found" );
+          callback("Quality Report not found");
           return;
         }
-        if (qr.status.state != "" && qr.status.state != "unknown") {
+        if (qr.status.state != "" && qr.status.state != "requested") {
           callback(null)
           return;
         }
+        jobcount++;
+        console.log("STARING CALCULATION --- " + jobcount);
         // first get all of the query reports that have the same measure_id sub_id and effective_date
         // and count how many are currently completed running or queued
         // there should only be queued items if there has already been a qr that has completed
-        database.collection("quality-reports").aggregate([
-          {"$match" : {
-            "effective_date" : qr.effective_date,
-            "measure_id" : qr.measure_id,
-            "sub_id" : qr.sub_id
-          }},
-          {
+
+        database.collection("query_cache").aggregate([{
+          "$match": {
+            "effective_date": qr.effective_date,
+            "measure_id": qr.measure_id,
+            "sub_id": qr.sub_id
+          }
+        }, {
           $group: {
             _id: "$status.state",
             count: {
@@ -151,40 +161,54 @@ var jobs = {
             qr.save();
             this.queueObject.enqueue("rollup", "rollup", qr.id);
           } else {
-            // time to calculate the pateint results
-            qr.status.state = "calculating";
-            qr.save();
-            console.log("calculating measure records");
-            // calculate patient level records
-            // this should be blocking
-            cqmEngine.calculate(qr);
-            // push all queued reports to the rollup queue
-            QualityReport.find({
-              measure_id: qr.measure_id,
-              sub_id: qr.sub_id,
-              effective_date: qr.effective_date,
-              "status.state": {
-                "$ne": "calculated"
-              }
-            }).then((results) => {
-              results.forEach((rep) => {
-                rep.status.state = "queued";
-                rep.save();
-                this.queueObject.enqueue("rollup", "rollup", rep.id);
-              });
-              callback(null, true);
-            }).catch((err) => {
-              qr.status.state = "failed";
-              qr.status.log.push(err.toString());
+            new Fiber(() => {
+              // time to calculate the pateint results
+              qr.status.state = "calculating";
               qr.save();
-              callback(err, null);
-            });
-          }
+              console.log("calculating measure records");
+              // calculate patient level records
+              // this should be blocking
+              try {
+                cqmEngine.calculate(qr);
+              } catch (e) {
+                qr.status.state = "failed";
+                qr.status.log.push(e);
+                qr.save();
+                console.log(e);
+                console.log("ENDING CALCULATION --- with error " + jobcount);
+                throw e;
 
-        })
+              }
+              console.log("ENDING CALCULATION --- " + jobcount);
+              // push all queued reports to the rollup queue
+              QualityReport.find({
+                measure_id: qr.measure_id,
+                sub_id: qr.sub_id,
+                effective_date: qr.effective_date,
+                "status.state": {
+                  "$ne": "calculated"
+                }
+              }).then((results) => {
+                results.forEach((rep) => {
+                  rep.status.state = "queued";
+                  rep.save();
+                  this.queueObject.enqueue("rollup", "rollup", rep.id);
+                });
+                callback(null, true);
+              }).catch((err) => {
+                qr.status.state = "failed";
+                qr.status.log.push(err.toString());
+                qr.save();
+                callback(err, null);
+              });
+            }).run();
+          }
+        });
       }).catch((err) => {
+        console.log("ENDING CALCULATION with error--- ");
         callback(err, null)
       });
+
     }
   }
 };
@@ -214,36 +238,36 @@ var worker = new NR.worker({
   toDisconnectProcessors: true,
 }, jobs);
 
-worker.connect(function(){
+worker.connect(function () {
   worker.workerCleanup(); // optional: cleanup any previous improperly shutdown workers on this host
   worker.start();
 });
-  ///////////////////////
-  // START A SCHEDULER //
-  ///////////////////////
+///////////////////////
+// START A SCHEDULER //
+///////////////////////
 
-var scheduler = new NR.scheduler({
-  connection: connectionDetails
-});
-scheduler.connect(function () {
-  scheduler.start();
-});
+// var scheduler = new NR.scheduler({
+//   connection: connectionDetails
+// });
+// scheduler.connect(function () {
+//   scheduler.start();
+// });
 
 /////////////////////////
 // REGESTER FOR EVENTS //
 /////////////////////////
 
 worker.on('start', function () {
-  console.log("worker started "+this.name);
+  console.log("worker started " + this.name);
 });
 worker.on('end', function () {
-  console.log("worker ended " +this.name );
+  console.log("worker ended " + this.name);
 });
 worker.on('cleaning_worker', function (worker, pid) {
   console.log("cleaning old worker " + worker);
 });
 worker.on('poll', function (queue) {
-  console.log("worker polling " + queue + " " + " "+this.name );
+  console.log("worker polling " + queue + " " + " " + this.name);
 });
 worker.on('job', function (queue, job) {
   console.log("working job " + queue + " " + JSON.stringify(job));
@@ -263,25 +287,25 @@ worker.on('error', function (queue, job, error) {
 worker.on('pause', function () {
   console.log("worker paused");
 });
-
-scheduler.on('start', function () {
-  console.log("scheduler started");
-});
-scheduler.on('end', function () {
-  console.log("scheduler ended");
-});
-scheduler.on('poll', function () {
-  console.log("scheduler polling");
-});
-scheduler.on('master', function (state) {
-  console.log("scheduler became master");
-});
-scheduler.on('error', function (error) {
-  console.log("scheduler error >> " + error);
-});
-scheduler.on('working_timestamp', function (timestamp) {
-  console.log("scheduler working timestamp " + timestamp);
-});
-scheduler.on('transferred_job', function (timestamp, job) {
-  console.log("scheduler enquing job " + timestamp + " >> " + JSON.stringify(job));
-});
+//
+// scheduler.on('start', function () {
+//   console.log("scheduler started");
+// });
+// scheduler.on('end', function () {
+//   console.log("scheduler ended");
+// });
+// scheduler.on('poll', function () {
+//   console.log("scheduler polling");
+// });
+// scheduler.on('master', function (state) {
+//   console.log("scheduler became master");
+// });
+// scheduler.on('error', function (error) {
+//   console.log("scheduler error >> " + error);
+// });
+// scheduler.on('working_timestamp', function (timestamp) {
+//   console.log("scheduler working timestamp " + timestamp);
+// });
+// scheduler.on('transferred_job', function (timestamp, job) {
+//   console.log("scheduler enquing job " + timestamp + " >> " + JSON.stringify(job));
+// });

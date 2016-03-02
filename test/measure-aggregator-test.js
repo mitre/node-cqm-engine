@@ -33,10 +33,10 @@ describe('MeasureAggregator', function () {
 
     MongoClient.connect('mongodb://127.0.0.1:27017/fhir-test', function (err, db) {
       database = db;
-      db.collection("patient-cache").drop();
-      db.collection("quality-reports").drop();
-      db.collection("patient-cache").insert(patient_cache).then((res) => {
-        db.collection("quality-reports").insert(query_cache).then((qres) => {
+      db.collection("patient_cache").drop();
+      db.collection("query_cache").drop();
+      db.collection("patient_cache").insert(patient_cache).then((res) => {
+        db.collection("query_cache").insert(query_cache).then((qres) => {
           console.log("done loading");
           done(err);
         })
@@ -51,7 +51,7 @@ describe('MeasureAggregator', function () {
 
   });
 
-  it("should be able to build query pipleing ", (done) => {
+  it("should be able to build query pipeline ", (done) => {
     let measure_aggregator = new MeasureAggregator(database, cqms);
     QualityReport.find().then((res) => {
       res.forEach((rep) => {
