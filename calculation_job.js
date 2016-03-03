@@ -58,7 +58,6 @@ MongoClient.connect(mongo_url, function (err, db) {
 
 mongoose.connect(mongo_url);
 
-let jobcount = 0;
 /////////////////////////
 // REQUIRE THE PACKAGE //
 /////////////////////////
@@ -83,17 +82,12 @@ var jobs = {
         "_id": qr_id
       }).then((qr) => {
         cqmEngine.aggregate(qr).then((res) => {
-          qr.status.state = "completed";
-          qr.result = res
-          qr.save()
+          qr.setResultsAndMarkCompleted(res);
           callback(null, res);
         }).catch((err) => {
-          qr.status.state = "failed";
-          qr.status.log.push(err.toString());
-          qr.save();
+          qr.markFailed(err.toString());
           callback(err, null);
         });
-
       }).catch((err) => {
         callback(err, null)
       });
@@ -105,107 +99,70 @@ var jobs = {
       jobLock: {},
     },
     perform: function (qr_id, callback) {
-      // is the a qr with the same measure_id, sub_id, effective_date already
-      // finished ?  If so send to rollup queue.
-      // if not send to the patient calculation queue and rollup queue
 
+     /* prepare for callback hell:
+      first find the quality report for this job
+      */
       QualityReport.findOne({
         "_id": qr_id
       }).then((qr) => {
+        //callback error if there is no quailty report for the id declared in the job
         if (!qr) {
-          console.log("report not found for quality report with id " + qr_id);
-          callback("Quality Report not found");
+          callback("Quality Report not found for id "+ qr_id);
           return;
         }
+        //make sure the status of the job is appropriate for patient level calculation
+        //if not just return -- make sure to call the callback to let reque know we are done
         if (qr.status.state != "" && qr.status.state != "requested") {
           callback(null)
           return;
         }
-        jobcount++;
-        console.log("STARING CALCULATION --- " + jobcount);
-        // first get all of the query reports that have the same measure_id sub_id and effective_date
-        // and count how many are currently completed running or queued
-        // there should only be queued items if there has already been a qr that has completed
-
-        database.collection("query_cache").aggregate([{
-          "$match": {
-            "effective_date": qr.effective_date,
-            "measure_id": qr.measure_id,
-            "sub_id": qr.sub_id
-          }
-        }, {
-          $group: {
-            _id: "$status.state",
-            count: {
-              $sum: 1
-            }
-          }
-        }]).toArray((err, results) => {
-          if (err) {
-            callback(err, null);
-            return;
-          }
-          let queuedRunningOrDone = 0;
-          if (results) {
-            results.forEach((item) => {
-              let key = item['_id'];
-              if (key == "completed" || key == "calculating" || key == "queued") {
-                queuedRunningOrDone += item["count"]
-              }
-            });
-
-          }
-          // if there are items that are queued runnign or done add this to the rollup queue
-          if (queuedRunningOrDone != 0) {
+        //count the number of similar (measure_id,sub_id,effective_date) quailty reports that are currently
+        // queued, running or done. if this is greater than 0 then something else is already calculating the
+        // patient level results for this report
+        QualityReport.queuedRunningOrDone(qr).then((count)=> {
+          // there is already another working working on calculating the patients for this measure_id,sub_id,effective_date combo
+          if (count != 0) {
+            // mark it for qollup quing
             qr.status.state = "queued";
             qr.save();
             this.queueObject.enqueue("rollup", "rollup", qr.id);
+            callback(null,true);
           } else {
+            // calculate the patient level results
+            // this needs to happen in a fiber for db access to the patients
             new Fiber(() => {
               // time to calculate the pateint results
               qr.status.state = "calculating";
               qr.save();
-              console.log("calculating measure records");
               // calculate patient level records
               // this should be blocking
               try {
                 cqmEngine.calculate(qr);
               } catch (e) {
-                qr.status.state = "failed";
-                qr.status.log.push(e);
-                qr.save();
-                console.log(e);
-                console.log("ENDING CALCULATION --- with error " + jobcount);
-                throw e;
+                //calculation failed
+                qr.markFailed(err.toString());
+                callback(err,null);
 
               }
-              console.log("ENDING CALCULATION --- " + jobcount);
-              // push all queued reports to the rollup queue
-              QualityReport.find({
-                measure_id: qr.measure_id,
-                sub_id: qr.sub_id,
-                effective_date: qr.effective_date,
-                "status.state": {
-                  "$ne": "calculated"
-                }
-              }).then((results) => {
+              //set all of the reports with the same measure_id,sub_id,effective_date as the qr to queued
+              // and push them to the rollup queue
+              QualityReport.markForRollup(qr).then((results) => {
                 results.forEach((rep) => {
-                  rep.status.state = "queued";
-                  rep.save();
                   this.queueObject.enqueue("rollup", "rollup", rep.id);
                 });
+                // now that all of the reports are queued for rollup aggregation call the callback
+                // to let this worker run another job
                 callback(null, true);
               }).catch((err) => {
-                qr.status.state = "failed";
-                qr.status.log.push(err.toString());
-                qr.save();
+                //something went wrong -- mark the report as faild and save it
+                qr.markFailed(err.toString());
                 callback(err, null);
               });
             }).run();
           }
         });
       }).catch((err) => {
-        console.log("ENDING CALCULATION with error--- ");
         callback(err, null)
       });
 
