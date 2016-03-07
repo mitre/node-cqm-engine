@@ -1,5 +1,5 @@
 {
-  "name": "node-worker",
+  "name": "node-qme-worker",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
