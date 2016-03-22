@@ -19,9 +19,9 @@ describe('Prefilter', function () {
   });
 
   it("should be able to correctly create a simple query filter" , (done) =>{
-    let filter = new pref.Prefilter({record_field: "gender", desired_value: "F"});
+    let filter = new pref.Prefilter({record_field: "gender", desired_value: "female"});
     let mongoFilter = filter.buildQueryHash(0);
-    assert(jsonIsEqual(mongoFilter,{"gender" : "F"}))
+    assert(jsonIsEqual(mongoFilter,{"gender" : "female"}))
     done();
   });
 
@@ -54,6 +54,7 @@ describe('Prefilter', function () {
     assert(jsonIsEqual(mongoFilter,{"birthdate" : {"$gt" : d.getTime()/1000}}))
     done();
   });
+
 
 
 });
