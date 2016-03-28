@@ -8,6 +8,7 @@ let fhir = require("fhir-patient-api/lib/patient");
 let Fiber = require('fibers');
 let mongo = require('mongodb');
 let MongoClient = mongo.MongoClient;
+let Logger = require('mongodb').Logger
 let fs = require('fs');
 let CEE = require("../lib/cqm-execution-engine")
 let QualityReport = require("../lib/quality_report")
@@ -50,6 +51,7 @@ describe('Patient', function() {
     cqms = loader.load();
     handler = new Handler();
     MongoClient.connect('mongodb://127.0.0.1:27017/fhir-test', function(err, db) {
+      //Logger.setLevel('debug');
       database = db;
       db.collection("patient_cache").drop();
       db.collection("query_cache").drop();
@@ -107,20 +109,32 @@ describe('Patient', function() {
     }).run();
   });
 
-  it("should be able to create prefilter that actually filters patients " , (done) =>{
+  it("should be able to create a gender prefilter that actually filters patients " , (done) =>{
       new Fiber(() => {
-        var  qr = new QualityReport({measure_id : "40280381-4C18-79DF-014C-291EF3F90654", sub_id : "b"})
-        console.log(qr.measure_id);
+        var  qr = new QualityReport({measure_id : "40280381-4B9A-3825-014B-E10B1E0A13DB", sub_id : null})
         var cqmEngine = new CEE(database, bundle_path);
         var measure = cqmEngine.getMeasure(qr);
-        //console.log(cqmEngine.cqms);
-        console.log(cqmEngine.buildPrefilter(measure,0));
-        var psource = new PatientSource(database,"patients",cqmEngine.buildPrefilter(measure,0));
+        var psource = new PatientSource(database,"patients",cqmEngine.buildPrefilter(measure,1388552400));
         var totalPatients = new PatientSource(database,"patients").count();
-        var males = psource.count();
+        var females = psource.count();
         assert.equal(300, totalPatients, "should be a total of 300 patients in db")
-        assert.equal(157, males,"should be 157 males in the db")
+        assert.equal(143, females,"should be 143 males in the db")
         done();
       }).run();
   });
+
+  it("should be able to create an age prefilter that actually filters patients " , (done) =>{
+      new Fiber(() => {
+        var  qr = new QualityReport({measure_id : "40280381-4DE7-DB4D-014D-E86C831201C7", sub_id : "a"})
+        var cqmEngine = new CEE(database, bundle_path);
+        var measure = cqmEngine.getMeasure(qr);
+        var psource = new PatientSource(database,"patients",cqmEngine.buildPrefilter(measure,1388552400));
+        var totalPatients = new PatientSource(database,"patients").count();
+        var elderly = psource.count();
+        assert.equal(300, totalPatients, "should be a total of 300 patients in db")
+        assert.equal(250, elderly,"should be 16 elderly in the db")
+        done();
+      }).run();
+  });
+
 });
