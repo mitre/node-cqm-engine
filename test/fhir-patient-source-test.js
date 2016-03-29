@@ -75,7 +75,7 @@ describe('Patient', function() {
       var psource = new PatientSource(database,"patients")
       var executor = new Executor(cqms);
       var options = {effective_date: 1451606400 , enable_logging: false, enable_rationale: false, short_circuit: false};
-      executor.execute(psource,['CMS113v4'], handler, options);
+      executor.execute(psource,['CMS129v5'], handler, options);
       done();
     }).run();
   });
@@ -87,7 +87,7 @@ describe('Patient', function() {
       var options = {effective_date: 1451606400 , enable_logging: true, enable_rationale: false, short_circuit: false};
       var cqmHandler = new CQMCalculationHandler(bundle.measures,options,database);
       bundle.measure_ids().forEach((mid) => {
-      //  executor.execute(psource,[mid], cqmHandler, options);
+        executor.execute(psource,[mid], cqmHandler, options);
       })
       done();
     }).run();
