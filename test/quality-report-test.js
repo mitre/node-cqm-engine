@@ -9,7 +9,6 @@ describe('QualityReport', function() {
   it("should be able to create a new qualityReport", (done) => {
     let qr = new QualityReport();
     qr.save().then((res) =>{
-      console.log(res);
       done();
     })
     });
