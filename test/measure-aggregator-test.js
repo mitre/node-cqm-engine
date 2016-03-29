@@ -11,7 +11,6 @@ let Fiber = require('fibers');
 let mongo = require('mongodb');
 let MongoClient = mongo.MongoClient;
 
-mongoose.connect('mongodb://127.0.0.1:27017/fhir-test');
 let bundle = null;
 let bundle_path = "test/fixtures/bundle-2.7.0.zip";
 let cqms = null;
