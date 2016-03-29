@@ -100,16 +100,14 @@ describe('Patient', function() {
       var female_psource = new PatientSource(database,"patients",{gender: "female"});
       var pcount = psource.count();
       var fcount = female_psource.count();
-      console.log("count");
-      console.log(pcount);
-      console.log(fcount);
       done();
-      assert(pcount < fcount,"Should be able to tell that ")
+      assert.equal(143, pcount ,"SHould have counted 143 females in database")
 
     }).run();
   });
 
-  it("should be able to create a gender prefilter that actually filters patients " , (done) =>{
+
+  it("should be able to create a combination gender birthdate prefilter that actually filters patients " , (done) =>{
       new Fiber(() => {
         var  qr = new QualityReport({measure_id : "40280381-4B9A-3825-014B-E10B1E0A13DB", sub_id : null})
         var cqmEngine = new CEE(database, bundle_path);
@@ -118,7 +116,21 @@ describe('Patient', function() {
         var totalPatients = new PatientSource(database,"patients").count();
         var females = psource.count();
         assert.equal(300, totalPatients, "should be a total of 300 patients in db")
-        assert.equal(143, females,"should be 143 males in the db")
+        assert.equal(64, females,"should be 143 males in the db")
+        done();
+      }).run();
+  });
+
+  it("should be able to create a gender prefilter that actually filters patients " , (done) =>{
+      new Fiber(() => {
+        var  qr = new QualityReport({measure_id : "40280381-4BE2-53B3-014B-E5E7F0DB01CE", sub_id : null})
+        var cqmEngine = new CEE(database, bundle_path);
+        var measure = cqmEngine.getMeasure(qr);
+        var psource = new PatientSource(database,"patients",cqmEngine.buildPrefilter(measure,1388552400));
+        var totalPatients = new PatientSource(database,"patients").count();
+        var males = psource.count();
+        assert.equal(300, totalPatients, "should be a total of 300 patients in db")
+        assert.equal(157, males,"should be 143 males in the db")
         done();
       }).run();
   });

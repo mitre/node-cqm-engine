@@ -38,7 +38,7 @@ describe('Prefilter', function () {
     let mongoFilter = filter.buildQueryHash(1420070399);
     let d = new Date(1420070399000);
     d.setFullYear(d.getFullYear() -2);
-    assert(jsonIsEqual(mongoFilter,{"birthdate" : {"$gt" : d.getTime()/1000}}))
+    assert(jsonIsEqual(mongoFilter,{"birthdate" : {"$gt" : d}}))
     done();
   });
 
@@ -51,7 +51,7 @@ describe('Prefilter', function () {
     // before the months are taken off
     d.setFullYear(d.getFullYear() - 1);
     d.setMonth(d.getMonth() - 2);
-    assert(jsonIsEqual(mongoFilter,{"birthdate" : {"$gt" : d.getTime()/1000}}))
+    assert(jsonIsEqual(mongoFilter,{"birthdate" : {"$gt" : d}}))
     done();
   });
 
