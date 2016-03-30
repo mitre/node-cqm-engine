@@ -1,5 +1,5 @@
 {
-  "name": "node-qme-worker",
+  "name": "node-cqm-engine",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
