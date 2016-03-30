@@ -14,7 +14,7 @@ let CEE = require("../lib/cqm-execution-engine")
 let QualityReport = require("../lib/quality_report")
 global.print = function(data){}
 let bundle = null;
-let bundle_path = "test/fixtures/bundle-2.7.0.zip";
+let bundle_path = "test/fixtures/bundle.zip";
 let cqms = null;
 let handler = null;
 let PatientSource = require("../lib/fhir-patient-source.js")
@@ -70,7 +70,7 @@ describe('Patient', function() {
 
   });
 
-  it("should be able to calulate patient records ", (done) =>{
+  it("should be able to calulate patient records without error", (done) =>{
     new Fiber(() => {
       var psource = new PatientSource(database,"patients")
       var executor = new Executor(cqms);
@@ -98,9 +98,9 @@ describe('Patient', function() {
       var female_psource = new PatientSource(database,"patients",{gender: "female"});
       var pcount = psource.count();
       var fcount = female_psource.count();
+      assert.equal(300, pcount ,"Should have counted 143 females in database")
+      assert.equal(143, fcount ,"Should have counted 143 females in database")
       done();
-      assert.equal(143, pcount ,"SHould have counted 143 females in database")
-
     }).run();
   });
 
