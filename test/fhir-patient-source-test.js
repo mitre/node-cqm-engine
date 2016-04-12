@@ -1,7 +1,7 @@
 "use strict";
 let exec = require("child_process").exec
 let assert = require('assert');
-let Loader = require("node-qme").Loader;
+
 let Bundle = require("node-qme").Bundle;
 let Executor = require("node-qme").Executor;
 let fhir = require("fhir-patient-api/lib/patient");
@@ -47,8 +47,6 @@ describe('Patient', function() {
  this.timeout(0);
   before((done) => {
     bundle = new Bundle(bundle_path);
-    var loader = new Loader(bundle);
-    cqms = loader.load();
     handler = new Handler();
     MongoClient.connect('mongodb://127.0.0.1:27017/fhir-test', function(err, db) {
       //Logger.setLevel('debug');
@@ -73,7 +71,7 @@ describe('Patient', function() {
   it("should be able to calulate patient records without error", (done) =>{
     new Fiber(() => {
       var psource = new PatientSource(database,"patients")
-      var executor = new Executor(cqms);
+      var executor = new Executor(bundle);
       var options = {effective_date: 1451606400 , enable_logging: false, enable_rationale: false, short_circuit: false};
       executor.execute(psource,['CMS129v5'], handler, options);
       done();
@@ -83,9 +81,9 @@ describe('Patient', function() {
   it("should be able to calulate patient records and put them in the database", (done) =>{
     new Fiber(() => {
       var psource = new PatientSource(database)
-      var executor = new Executor(cqms);
+      var executor = new Executor(bundle);
       var options = {effective_date: 1451606400 , enable_logging: true, enable_rationale: false, short_circuit: false};
-      var cqmHandler = new CQMCalculationHandler(bundle.measures,options,database);
+      var cqmHandler = new CQMCalculationHandler(bundle,options,database);
       executor.execute(psource,['CMS129v5'], cqmHandler, options);
       done();
     }).run();
@@ -93,7 +91,7 @@ describe('Patient', function() {
 
   it("should be able to filter patients with a query", (done) =>{
     new Fiber(() => {
-      var cqmEngine = new CEE(database, bundle_path);
+      var cqmEngine = new CEE(database, bundle);
       var psource = new PatientSource(database,"patients");
       var female_psource = new PatientSource(database,"patients",{gender: "female"});
       var pcount = psource.count();
@@ -108,13 +106,13 @@ describe('Patient', function() {
   it("should be able to create a combination gender birthdate prefilter that actually filters patients " , (done) =>{
       new Fiber(() => {
         var  qr = new QualityReport({measure_id : "40280381-4B9A-3825-014B-E10B1E0A13DB", sub_id : null})
-        var cqmEngine = new CEE(database, bundle_path);
+        var cqmEngine = new CEE(database, bundle);
         var measure = cqmEngine.getMeasure(qr);
         var psource = new PatientSource(database,"patients",cqmEngine.buildPrefilter(measure,1388552400));
         var totalPatients = new PatientSource(database,"patients").count();
         var females = psource.count();
         assert.equal(300, totalPatients, "should be a total of 300 patients in db")
-        assert.equal(64, females,"should be 143 males in the db")
+        assert.equal(64, females,"should be 63 females in the db")
         done();
       }).run();
   });
@@ -122,13 +120,13 @@ describe('Patient', function() {
   it("should be able to create a gender prefilter that actually filters patients " , (done) =>{
       new Fiber(() => {
         var  qr = new QualityReport({measure_id : "40280381-4BE2-53B3-014B-E5E7F0DB01CE", sub_id : null})
-        var cqmEngine = new CEE(database, bundle_path);
+        var cqmEngine = new CEE(database, bundle);
         var measure = cqmEngine.getMeasure(qr);
         var psource = new PatientSource(database,"patients",cqmEngine.buildPrefilter(measure,1388552400));
         var totalPatients = new PatientSource(database,"patients").count();
         var males = psource.count();
         assert.equal(300, totalPatients, "should be a total of 300 patients in db")
-        assert.equal(157, males,"should be 143 males in the db")
+        assert.equal(157, males,"should be 157 males in the db")
         done();
       }).run();
   });
@@ -136,7 +134,7 @@ describe('Patient', function() {
   it("should be able to create an age prefilter that actually filters patients " , (done) =>{
       new Fiber(() => {
         var  qr = new QualityReport({measure_id : "40280381-4DE7-DB4D-014D-E86C831201C7", sub_id : "a"})
-        var cqmEngine = new CEE(database, bundle_path);
+        var cqmEngine = new CEE(database, bundle);
         var measure = cqmEngine.getMeasure(qr);
         var psource = new PatientSource(database,"patients",cqmEngine.buildPrefilter(measure,1388552400));
         var totalPatients = new PatientSource(database,"patients").count();
