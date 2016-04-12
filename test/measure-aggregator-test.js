@@ -3,7 +3,7 @@ let QualityReport = require("../lib/quality_report")
 let MeasureAggregator = require("../lib/measure_aggregator")
 let mongoose = require("mongoose");
 let assert = require('assert');
-let Loader = require("node-qme").Loader;
+
 let Bundle = require("node-qme").Bundle;
 let Executor = require("node-qme").Executor;
 let fhir = require("fhir-patient-api/lib/patient");
@@ -27,8 +27,7 @@ describe('MeasureAggregator', function () {
   this.timeout(0);
   before((done) => {
     bundle = new Bundle(bundle_path);
-    var loader = new Loader(bundle);
-    cqms = loader.load();
+
 
     MongoClient.connect('mongodb://127.0.0.1:27017/fhir-test', function (err, db) {
       database = db;
@@ -64,7 +63,7 @@ describe('MeasureAggregator', function () {
   });
 
   it("should be able to aggreagate query report", (done) => {
-    let measure_aggregator = new MeasureAggregator(database, cqms);
+    let measure_aggregator = new MeasureAggregator(database, bundle);
     let qrcount = 0
     let result_count = 0;
     let errors = [];

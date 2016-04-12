@@ -14,7 +14,8 @@
     "node-qme": ">=0.1.0",
     "node-resque": "~3.0.0",
     "optimist": "",
-    "promise": "^7.1.1"
+    "promise": "^7.1.1",
+    "json-is-equal":""
   },
   "author": {"name": "Rob Dingwell", "email": "rob@mitre.org"},
   "contributors": [
