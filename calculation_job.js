@@ -40,6 +40,7 @@ let Fiber = require('fibers');
 let mongo = require('mongodb');
 let MongoClient = mongo.MongoClient;
 let QualityReport = require("./lib/quality_report")
+let Bundle = require("node-qme").Bundle
   // need bundle locaation information so it can be loaded from the filesystem
   // need to create a connection to mongodb in here to
   // need to make sure mongoose is setup
@@ -53,7 +54,7 @@ let mongo_url = "mongodb://" + mongo_host + "/" + mongo_database;
 let queues = argv.queues.split(":")
 MongoClient.connect(mongo_url, function (err, db) {
   database = db;
-  cqmEngine = new CEE(database, bundle_path);
+  cqmEngine = new CEE(database, new Bundle(bundle_path));
 });
 
 mongoose.connect(mongo_url);
