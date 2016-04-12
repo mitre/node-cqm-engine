@@ -137,6 +137,7 @@ describe('Patient', function() {
         var cqmEngine = new CEE(database, bundle);
         var measure = cqmEngine.getMeasure(qr);
         var psource = new PatientSource(database,"patients",cqmEngine.buildPrefilter(measure,1388552400));
+        console.log(psource.query);
         var totalPatients = new PatientSource(database,"patients").count();
         var elderly = psource.count();
         assert.equal(300, totalPatients, "should be a total of 300 patients in db")
