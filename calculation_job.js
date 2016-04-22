@@ -1,4 +1,4 @@
-"use strict";
+ "use strict";
 var params = require('optimist')
   .options({
     "h": {
@@ -12,8 +12,7 @@ var params = require('optimist')
     },
     "b": {
       alias: "bundle",
-      describe: "path to the bundle to use for measure calculation [file path] ",
-      demand: true
+      describe: "path to the bundle to use for measure calculation [file path] "
     },
     "m": {
       alias: "mongo_host",
@@ -54,7 +53,13 @@ let mongo_url = "mongodb://" + mongo_host + "/" + mongo_database;
 let queues = argv.queues.split(":")
 MongoClient.connect(mongo_url, function (err, db) {
   database = db;
-  var source =  new MeasureSource(db);
+
+  var source =  null;
+  if(bundle_path) {
+    source = new Bundle(bundle_path);
+  }else{
+    source = new MeasureSource(db);
+  }
   source.loadUtils();
   cqmEngine = new CEE(database,source);
 });
