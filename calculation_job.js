@@ -40,6 +40,7 @@ let mongo = require('mongodb');
 let MongoClient = mongo.MongoClient;
 let QualityReport = require("./lib/quality_report")
 let MeasureSource = require("node-qme/lib/mongo/measure_source")
+let Bundle = require("node-qme").Bundle
   // need bundle locaation information so it can be loaded from the filesystem
   // need to create a connection to mongodb in here to
   // need to make sure mongoose is setup
