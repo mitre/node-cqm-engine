@@ -54,7 +54,9 @@ var queue = new NR.queue({
 queue.on('error', function (error) {
   console.log(error);
 });
-queue.connect()
+queue.connect(function(){
+
+})
 let poll = function () {
   console.log("polling for new quality reports");
   QualityReport.find({
