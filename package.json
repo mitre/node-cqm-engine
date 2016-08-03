@@ -17,6 +17,6 @@
     "optimist": "",
     "promise": "^7.1.1"
   },
-  "author": "",
-  "license": "ISC"
+  "author": {"name": "Rob Dingwell"},
+  "license": "Apache-2.0"
 }
