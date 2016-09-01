@@ -139,7 +139,7 @@ var jobs = {
               // this should be blocking
               try {
                 cqmEngine.calculate(qr);
-              } catch (e) {
+              } catch (err) {
                 //calculation failed
                 qr.markFailed(err.toString());
                 callback(err,null);
