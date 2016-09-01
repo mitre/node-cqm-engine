@@ -1,22 +1,25 @@
 {
   "name": "node-cqm-engine",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "MongoDB based cqm calculation engine with redis workers",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "fhir-patient-api": "git+https://github.com/mitre/fhir-patient-api.git",
+    "fhir-patient-api": ">=0.1.0",
     "fibers": ">=1.0.4",
     "minimalist": "^1.0.0",
     "minimist": "^1.2.0",
     "mongoose": "^4.4.2",
-    "node-qme": "git+https://github.com/mitre/node-qme.git",
+    "node-qme": ">=0.1.0",
     "node-resque": "~3.0.0",
     "optimist": "",
     "promise": "^7.1.1"
   },
-  "author": {"name": "Rob Dingwell"},
-  "license": "Apache-2.0"
+  "author": {"name": "Rob Dingwell", "email": "rob@mitre.org"},
+  "contributors": [
+    {"name": "Andy Gregorowicz", "email": "andy@mitre.org"}
+  ],
+  "license": "APSL-2.0",
+  "repository": {"type": "git", "url": "https://github.com/mitre/node-cqm-engine.git"}
 }
