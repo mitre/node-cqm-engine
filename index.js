@@ -17,8 +17,7 @@ var params = require('optimist')
     },
     "b": {
       alias: "bundle",
-      describe: "path to the bundle to use for measure calculation [file path] ",
-      demand: true
+      describe: "path to the bundle to use for measure calculation [file path] "
     },
     "m": {
       alias: "mongo_host",

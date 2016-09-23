@@ -1,4 +1,4 @@
-"use strict";
+ "use strict";
 var params = require('optimist')
   .options({
     "h": {
@@ -12,8 +12,7 @@ var params = require('optimist')
     },
     "b": {
       alias: "bundle",
-      describe: "path to the bundle to use for measure calculation [file path] ",
-      demand: true
+      describe: "path to the bundle to use for measure calculation [file path] "
     },
     "m": {
       alias: "mongo_host",
@@ -40,6 +39,8 @@ let Fiber = require('fibers');
 let mongo = require('mongodb');
 let MongoClient = mongo.MongoClient;
 let QualityReport = require("./lib/quality_report")
+let MeasureSource = require("node-qme/lib/mongo/measure_source")
+let Bundle = require("node-qme").Bundle
   // need bundle locaation information so it can be loaded from the filesystem
   // need to create a connection to mongodb in here to
   // need to make sure mongoose is setup
@@ -53,7 +54,15 @@ let mongo_url = "mongodb://" + mongo_host + "/" + mongo_database;
 let queues = argv.queues.split(":")
 MongoClient.connect(mongo_url, function (err, db) {
   database = db;
-  cqmEngine = new CEE(database, bundle_path);
+
+  var source =  null;
+  if(bundle_path) {
+    source = new Bundle(bundle_path);
+  }else{
+    source = new MeasureSource(db);
+  }
+  source.loadUtils();
+  cqmEngine = new CEE(database,source);
 });
 
 mongoose.connect(mongo_url);
@@ -141,8 +150,8 @@ var jobs = {
                 cqmEngine.calculate(qr);
               } catch (err) {
                 //calculation failed
-                qr.markFailed(err.toString());
-                callback(err,null);
+                qr.markFailed(e.toString());
+                callback(e,null);
 
               }
               //set all of the reports with the same measure_id,sub_id,effective_date as the qr to queued
