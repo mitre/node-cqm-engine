@@ -11,7 +11,7 @@
     "minimalist": "^1.0.0",
     "minimist": "^1.2.0",
     "mongoose": "^4.4.2",
-    "node-qme": ">=0.1.0",
+    "node-qme": ">=0.2.0",
     "node-resque": "~3.0.0",
     "optimist": "",
     "promise": "^7.1.1",

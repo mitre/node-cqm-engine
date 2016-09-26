@@ -1,4 +1,4 @@
- "use strict";
+"use strict";
 var params = require('optimist')
   .options({
     "h": {
