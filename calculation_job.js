@@ -150,8 +150,8 @@ var jobs = {
                 cqmEngine.calculate(qr);
               } catch (err) {
                 //calculation failed
-                qr.markFailed(e.toString());
-                callback(e,null);
+                qr.markFailed(err.toString());
+                callback(err,null);
 
               }
               //set all of the reports with the same measure_id,sub_id,effective_date as the qr to queued
