@@ -6,12 +6,12 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "fhir-patient-api": ">=0.1.0",
+    "fhir-patient-api": "0.2.0",
     "fibers": ">=1.0.4",
     "minimalist": "^1.0.0",
     "minimist": "^1.2.0",
     "mongoose": "^4.4.2",
-    "node-qme": ">=0.2.0",
+    "node-qme": "0.3.0",
     "node-resque": "~3.0.0",
     "optimist": "",
     "promise": "^7.1.1",
