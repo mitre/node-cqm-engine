@@ -15,6 +15,11 @@ and add them the redis calculate queue for processing by the calculation_job des
     -d, --database    the mongodb database                                                                                         [default: "fhir"]
     -r, --redis       the redis server used to store the background processing jobs                                                [default: "127.0.0.1"]
 
+### Setup
+```
+yarn install
+```
+
 ### Calculation Worker
 The calculation_job.js script is used to perform the measure calculations.  The script itself is an implementation of a node-resque worker and performs jobs that are added to
 redis queues.  For this task there are 2 redis queues that are used, calculate and rollup.  
